@@ -1,0 +1,4 @@
+This is an area for collaborating on the "Web3" specification.  Web3
+is a backwards-incompatible WSGI-like protocol that attempts to
+normalize web-application-to-server code across both Python 2 and
+Python 3.
