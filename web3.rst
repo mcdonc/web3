@@ -1103,7 +1103,7 @@ URL Reconstruction
 ------------------
 
 If an application wishes to reconstruct a request's complete URL (as a
-bytes object), it may do so using the following algorithm:
+bytes object), it may do so using the following algorithm::
 
     host = environ.get('HTTP_HOST')
 
