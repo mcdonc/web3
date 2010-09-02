@@ -108,9 +108,13 @@ Differences from WSGI
 
 - ``SERVER_PORT`` must be a bytes instance (not an integer).
 
-- The server must not inject an additional content-length header by
-  guessing the length from the response iterable.  This must be set
+- The server must not inject an additional ``Content-Length`` header
+  by guessing the length from the response iterable.  This must be set
   by the application itself in all situations.
+
+  .. XXX (chrism) I'm -0 on this; this behavior doesn't seem that
+     harmful.  If we do keep it, we need to remove the bit in
+     "Specification Details" about ``len(body)``.
 
 - If the origin server advertises that it has the ``web3.async``
   capability, a Web3 application callable used by the server is
