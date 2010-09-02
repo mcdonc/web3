@@ -2,7 +2,8 @@ PEP: XXX
 Title: Python Web3 Interface
 Version: $Revision$
 Last-Modified: $Date$
-Author: Chris McDonough <chrism@plope.com>
+Author: chrism@plope.com (Chris McDonough),
+        armin.ronacher@active-4.com (Armin Ronacher)
 Discussions-To: Python Web-SIG <web-sig@python.org>
 Status: Draft
 Type: Informational
@@ -38,7 +39,7 @@ compatible.
 
 Applications and servers which are written to this specification are
 meant to work properly under Python 2.6.X, Python 2.7.X and Python
-3.1+.  Neither an application nor a server that implements this
+3.1+.  Neither an application nor a server that implements the Web3
 specification can be easily written which will work under Python 2
 versions earlier than 2.6 nor Python 3 versions earlier than 3.1.
 
@@ -46,8 +47,8 @@ versions earlier than 2.6 nor Python 3 versions earlier than 3.1.
    http://bugs.python.org/issue4006 so os.environ['foo'] returns
    surrogates (ala PEP 383) when the value of 'foo' cannot be decoded
    using the current locale instead of failing with a KeyError is the
-   true minimum Python 3 version.  In particular, however, Python 3.0
-   is not supported.
+   *true* minimum Python 3 version.  In particular, however, Python
+   3.0 is not supported.
 
 Explicability and documentability are the main technical drivers for
 the decisions made within the standard.
@@ -87,15 +88,14 @@ Differences from WSGI
 - Filelike objects passed to a "file_wrapper" must have an
   ``__iter__`` which returns bytes (never text).
 
-- "file_wrapper" is not supported by web3 due to the countless
-  problems it had on WSGI.
+- ``wsgi.file_wrapper`` is not supported.
 
 - ``QUERY_STRING``, ``SCRIPT_NAME``, ``PATH_INFO`` values required to
   be placed in environ by server (each as the empty bytes instance if
   no associated value is received in the HTTP request).
 
 - ``web3.path_info`` and ``web3.script_name`` must be put into the
-  WSGI environment by the origin WSGI server.  When available, each is
+  Web3 environment by the origin Web3 server.  When available, each is
   the original, plain 7-bit ASCII, URL-encoded variant of its CGI
   equivalent derived directly from the request URI (with %2F segment
   markers and other meta-characters intact).
@@ -111,6 +111,13 @@ Differences from WSGI
 - The server must not inject an additional content-length header by
   guessing the length from the response iterable.  This must be set
   by the application itself in all situations.
+
+- If the origin server advertises that it has the ``web3.async``
+  capability, a Web3 application callable used by the server is
+  permitted to return a callable that accepts no arguments.  When it
+  does so, this callable is to be called periodically by the origin
+  server until it returns a non-``None`` response, which must be a
+  normal Web3 response tuple.
 
 Specification Overview
 ======================
@@ -133,38 +140,37 @@ application to their containing server, and as a server to a
 contained application, and can be used to provide extended APIs,
 content transformation, navigation, and other useful functions.
 
-Throughout this specification, we will use the term "a callable" to
-mean "a function, method, class, or an instance with a ``__call__``
-method".  It is up to the server, gateway, or application implementing
-the callable to choose the appropriate implementation technique for
-their needs.  Conversely, a server, gateway, or application that is
-invoking a callable **must not** have any dependency on what kind of
-callable was provided to it.  Callables are only to be called, not
-introspected upon.
+Throughout this specification, we will use the term "application
+callable" to mean "a function, a method, or an instance with a
+``__call__`` method".  It is up to the server, gateway, or application
+implementing the application callable to choose the appropriate
+implementation technique for their needs.  Conversely, a server,
+gateway, or application that is invoking a callable **must not** have
+any dependency on what kind of callable was provided to it.
+Application callables are only to be called, not introspected upon.
 
 The Application/Framework Side
 ------------------------------
 
 The application object is simply a callable object that accepts one
 argument.  The term "object" should not be misconstrued as requiring
-an actual object instance: a function, method, class, or instance with
-a ``__call__`` method are all acceptable for use as an application
+an actual object instance: a function, method, or instance with a
+``__call__`` method are all acceptable for use as an application
 object.  Application objects must be able to be invoked more than
 once, as virtually all servers/gateways (other than CGI) will make
 such repeated requests.  It this cannot be guaranteed by the
 implementation of the actual application, it has to be wrapped in a
 function that creates a new instance on each call.
 
-(Note: although we refer to it as an "application" object, this should
-not be construed to mean that application developers will use Web3 as
-a web programming API.  It is assumed that application developers will
-continue to use existing, high-level framework services to develop
-their applications.  Web3 is a tool for framework and server
-developers, and is not intended to directly support application
-developers.)
+.. note:: although we refer to it as an "application" object, this
+   should not be construed to mean that application developers will
+   use Web3 as a web programming API.  It is assumed that application
+   developers will continue to use existing, high-level framework
+   services to develop their applications.  Web3 is a tool for
+   framework and server developers, and is not intended to directly
+   support application developers.)
 
-Here are two example application objects; one is a function, and the
-other is a class::
+An example of an application which is a function (``simple_app``)::
 
     def simple_app(environ):
         """Simplest possible application object"""
@@ -173,23 +179,25 @@ other is a class::
         body = [b'Hello world!\n']
         return body, status, headers
 
-    class AppClass:
-        """Produce the same output, but using a class.  It has to be
-        instanciated before passed to the server.
-        """
+An example of an application which is an instance (``simple_app``)::
 
-        def __init__(self, environ):
-            self.environ = environ
+    class AppClass(object):
 
-        def __call__(self):
+        """Produce the same output, but using an instance.  An
+        instance of this class must be instantiated before it is
+        passed to the server.  """
+
+      def __call__(self, environ):
             status = b'200 OK'
             headers = [(b'Content-type', b'text/plain')]
             body = [b'Hello world!\n']
             return body, status, headers
 
-Alternatively an application can return a callable instead of the tuple if
-the server supports asyncronous execution.  See below for more
-information.
+    simple_app = AppClass()
+
+Alternately, an application callable may return a callable instead of
+the tuple if the server supports asynchronous execution.  See
+information concerning ``web3.async`` for more information.
 
 The Server/Gateway Side
 -----------------------
@@ -236,7 +244,7 @@ server.
         environ['web3.multithread']  = False
         environ['web3.multiprocess'] = True
         environ['web3.run_once']     = True
-        environ['web2.async']        = False
+        environ['web3.async']        = False
 
         if environ.get('HTTPS', b'off') in (b'on', b'1'):
             environ['web3.url_scheme'] = b'https'
@@ -266,10 +274,10 @@ server.
 Middleware: Components that Play Both Sides
 -------------------------------------------
 
-Note that a single object may play the role of a server with respect
-to some application(s), while also acting as an application with
-respect to some server(s).  Such "middleware" components can perform
-such functions as:
+A single object may play the role of a server with respect to some
+application(s), while also acting as an application with respect to
+some server(s).  Such "middleware" components can perform such
+functions as:
 
 * Routing a request to different application objects based on the
   target URL, after rewriting the ``environ`` accordingly.
@@ -308,7 +316,7 @@ Here a middleware that changes the ``HTTP_HOST`` key if an
         """
         app_response = app(environ)
 
-        # syncronous response, filter now
+        # synchronous response, filter now
         if not hasattr(app_response, '__call__'):
             return filter_func(*app_response)
 
@@ -350,7 +358,7 @@ Here a middleware that changes the ``HTTP_HOST`` key if an
 Specification Details
 =====================
 
-The application object must accept one positional argument.  For the
+The application callable must accept one positional argument.  For the
 sake of illustration, we have named it ``environ``, but it is not
 required to have this name.  A server or gateway **must** invoke the
 application object using a positional (not keyword) argument.
@@ -366,9 +374,10 @@ Web3-required variables (described in a later section), and may also
 include server-specific extension variables, named according to a
 convention that will be described below.
 
-When called by the server, the application object must return a
-tuple yielding three elements: ``status``, ``headers`` and
-``body``.
+When called by the server, the application object must return a tuple
+yielding three elements: ``status``, ``headers`` and ``body``, or, if
+supported by the server via ``web3.async`` an argumentless callable
+which either returns ``None`` or a tuple of those three elements.
 
 The ``status`` element is a status in bytes of the form ``b'999
 Message here'``.
@@ -382,8 +391,8 @@ The ``body`` is an iterable yielding zero or more bytes instances.
 This can be accomplished in a variety of ways, such as by returning a
 list containing bytes instances as ``body``, or by returning a
 generator function as ``body`` that yields bytes instances, or by the
-``body`` being a class whose instances are iterable.  Regardless of
-how it is accomplished, the application object must always return a
+``body`` being an instance of a class which is iterable.  Regardless
+of how it is accomplished, the application object must always return a
 ``body`` iterable yielding zero or more bytes instances.
 
 The server or gateway must transmit the yielded bytes to the client in
@@ -408,10 +417,10 @@ on the result being accurate.
 If the ``body`` iterable returned by the application has a ``close()``
 method, the server or gateway **must** call that method upon
 completion of the current request, whether the request was completed
-normally, or terminated early due to an error.  (This is to support
-resource release by the application.  This protocol is intended to
-complement PEP 325's generator support, and other common iterables
-with ``close()`` methods.
+normally, or terminated early due to an error.  This is to support
+resource release by the application amd is intended to complement PEP
+325's generator support, and other common iterables with ``close()``
+methods.
 
 Finally, servers and gateways **must not** directly use any other
 attributes of the ``body`` iterable returned by the application.
@@ -440,7 +449,9 @@ string.  Each value is a bytes instance.
   "location".  This may be the empty bytes instance if the application
   corresponds to the "root" of the server.  SCRIPT_NAME will be a
   bytes instance representing a sequence of URL-encoded segments
-  separated by the slash character (``/``).
+  separated by the slash character (``/``).  It is assumed that
+  ``%2F`` characters will be decoded into literal slash characters
+  within ``PATH_INFO`` , as per CGI.
 
 ``PATH_INFO``
   The remainder of the request URL's "path", designating the virtual
@@ -448,14 +459,9 @@ string.  Each value is a bytes instance.
   **may** be a bytes instance if the request URL targets the
   application root and does not have a trailing slash.  PATH_INFO will
   be a bytes instance representing a sequence of URL-encoded segments
-  separated by the slash character (``/``).
-
-``RAW_PATH_INFO``
-  The non-URL-decoded ``PATH_INFO`` value.
-
-  Through a historical inequity, by virtue of the CGI specification,
-  ``PATH_INFO`` is present within the environment as an already
-  URL-decoded string.    This is the original URL-encoded value.
+  separated by the slash character (``/``).  It is assumed that
+  ``%2F`` characters will be decoded into literal slash characters
+  within ``PATH_INFO`` , as per CGI.
 
 ``QUERY_STRING``
   The portion of the request URL (in bytes) that follows the ``"?"``,
@@ -606,8 +612,8 @@ Finally, the ``environ`` dictionary may also contain server-defined
 variables.  These variables should have names which are strings,
 composed of only lower-case letters, numbers, dots, and underscores,
 and should be prefixed with a name that is unique to the defining
-server or gateway.  For example, ``mod_python`` might define variables
-with names like ``mod_python.some_variable``.  
+server or gateway.  For example, ``mod_web3`` might define variables
+with names like ``mod_web3.some_variable``.
 
 Input Stream
 ~~~~~~~~~~~~
@@ -699,7 +705,9 @@ Values Returned by A Web3 Application
 
 Web3 applications return an iterable in the form (``status``,
 ``headers``, ``body``).  The return value can be any iterable type
-that returns exactly three values.
+that returns exactly three values.  If the server supports
+asynchronous applications (``web3.async``), the response may be a
+callable object (which accepts no arguments).
 
 The ``status`` value is assumed by a gateway or server to be an HTTP
 "status" bytes instance like ``b'200 OK'`` or ``b'404 Not Found'``.
@@ -1154,8 +1162,8 @@ sort of data type was the sensible way to represent bytes in all
 Python 2 versions, and WSGI 1.0 was conceived before Python 3 existed.
 
 Python 3's ``str`` type supports the full API provided by the Python 2
-``str`` type, but since Python 3's ``str`` type does not represent a
-sequence of bytes, and instead represents text.  Therefore, using it
+``str`` type, but Python 3's ``str`` type does not represent a
+sequence of bytes, it instead represents text.  Therefore, using it
 to represent environ values also requires that the environ byte
 sequence be decoded to text via some encoding.  We cannot decode these
 bytes to text (at least in any way where the decoding has any meaning
@@ -1194,12 +1202,12 @@ specification exploits this subset equivalence.
 
 In the meantime, aside from any Python 2 vs. Python 3 compatibility
 issue, as various discussions on Web-SIG have pointed out, the WSGI
-1.0 specification is too general, providing support for asynchronous
-applications at the expense of implementation complexity.  This
-specification uses the fundamental incompatibility between WSGI 1.0
-and Python 3 as a natural divergence point to create a specification
-with reduced complexity by removing specialized support for
-asynchronous applications.
+1.0 specification is too general, providing support (via ``.write``)
+for asynchronous applications at the expense of implementation
+complexity.  This specification uses the fundamental incompatibility
+between WSGI 1.0 and Python 3 as a natural divergence point to create
+a specification with reduced complexity by changing specialized
+support for asynchronous applications.
 
 To provide backwards compatibility for older WSGI 1.0 applications, so
 that they may run on a Web3 stack, it is presumed that Web3 middleware
@@ -1211,7 +1219,7 @@ bytes values represented by the HTTP request and all the attendant
 encoding-guessing (or configuration) it implies.
 
 .. note:: Such middleware *might* in the future, instead of drawing an
-   equivalnce between Python 3 ``str`` and HTTP byte values, make use
+   equivalence between Python 3 ``str`` and HTTP byte values, make use
    of a yet-to-be-created "ebytes" type (aka "bytes-with-benefits"),
    particularly if a String ABC proposal is accepted into the Python
    core and implemented.
@@ -1262,22 +1270,22 @@ policy upon the server.  If the server must serve more than one
 application, such configuration would quickly become complex.  Many
 policies would also be impossible to express declaratively.
 
-In reality, HTTP is a complicated and legacy-fraught protocol that, to
-make sense of, requires a complex set of heuristics.  It would be nice
-if we could allow this protocol to protect us from this complexity,
-but we cannot do so reliably while still providing to application
-writers a level of control commensurate with reality.  Python
-applications must often deal with data embedded in the environment
-which not only must be parsed by legacy heuristics, but *does not
-conform even to any existing HTTP specification*.  While these
-eventualities are unpleasant, they crop up with regularity, making it
-impossible and undesirable to hide them from application developers,
-as application developers are the only people who are able to decide
-upon an appropriate action when an HTTP specification violation is
-detected.
+In reality, HTTP is a complicated and legacy-fraught protocol which
+requires a complex set of heuristics to make sense of. It would be
+nice if we could allow this protocol to protect us from this
+complexity, but we cannot do so reliably while still providing to
+application writers a level of control commensurate with reality.
+Python applications must often deal with data embedded in the
+environment which not only must be parsed by legacy heuristics, but
+*does not conform even to any existing HTTP specification*.  While
+these eventualities are unpleasant, they crop up with regularity,
+making it impossible and undesirable to hide them from application
+developers, as application developers are the only people who are able
+to decide upon an appropriate action when an HTTP specification
+violation is detected.
 
 Some have argued for mixed use of bytes and string values as environ
-values.  This proposal avoids that strategy.  Sole use of bytes as
+*values*.  This proposal avoids that strategy.  Sole use of bytes as
 environ values makes it possible to fit this specification entirely in
 one's head; you won't need to guess about which values are strings and
 which are bytes.
@@ -1396,18 +1404,19 @@ iterable.  If the middleware needs to accumulate more data from the
 application before it can produce any output, it **must** yield an
 empty string."  This requirement existed to support asynchronous
 applications and servers (see PEP 333's "Middleware Handling of Block
-Boundaries").  We might reintroduce this requirement if we want to
-support asynchronous applications and servers minimally.
+Boundaries").  Asynchronous applications are now serviced explicitly
+by ``web3.async`` capable protocol (a Web3 application callable may
+itself return a callable).
 
 ``web3.script_name`` and ``web3.path_info``
 -------------------------------------------
 
-These values are required to be placed into the environment by origin
-server under this specification.  Unlike ``SCRIPT_NAME`` and
+These values are required to be placed into the environment by an
+origin server under this specification.  Unlike ``SCRIPT_NAME`` and
 ``PATH_INFO``, these must be the original *URL-encoded* variants
 derived from the request URI.  We probably need to figure out how
 these should be computed originally, and what their values should be
-if the server performs URL rewriting.  
+if the server performs URL rewriting.
 
 Long Response Headers
 ---------------------
