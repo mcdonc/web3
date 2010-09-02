@@ -50,6 +50,9 @@ versions earlier than 2.6 nor Python 3 versions earlier than 3.1.
    *true* minimum Python 3 version.  In particular, however, Python
    3.0 is not supported.
 
+.. XXX (chrism) I need to re-remember why Python 2.5 can't handle this
+   spec.  I wish I had written it down.
+
 Explicability and documentability are the main technical drivers for
 the decisions made within the standard.
 
@@ -122,6 +125,8 @@ Differences from WSGI
   does so, this callable is to be called periodically by the origin
   server until it returns a non-``None`` response, which must be a
   normal Web3 response tuple.
+
+  .. XXX (chrism) Needs a section of its own for explanation.
 
 Specification Overview
 ======================
@@ -257,7 +262,7 @@ server.
 
         rv = application(environ)
         if hasattr(rv, '__call__'):
-            raise TypeError('This webserver does not support asyncronous '
+            raise TypeError('This webserver does not support asynchronous '
                             'responses.')
         body, status, headers = rv
 
@@ -380,8 +385,8 @@ convention that will be described below.
 
 When called by the server, the application object must return a tuple
 yielding three elements: ``status``, ``headers`` and ``body``, or, if
-supported by the server via ``web3.async`` an argumentless callable
-which either returns ``None`` or a tuple of those three elements.
+supported by an async server, an argumentless callable which either
+returns ``None`` or a tuple of those three elements.
 
 The ``status`` element is a status in bytes of the form ``b'999
 Message here'``.
@@ -417,6 +422,9 @@ for more details.)
 
 If a call to ``len(body)`` succeeds, the server must be able to rely
 on the result being accurate.
+
+.. XXX (chrism) Must remove above if we say that we don't expect
+   servers to set missing Content-Length headers.
 
 If the ``body`` iterable returned by the application has a ``close()``
 method, the server or gateway **must** call that method upon
@@ -522,11 +530,15 @@ Applications **should** check for the presence of any variables they
 require, and have a fallback plan in the event such a variable is
 absent.
 
-Note that CGI-defined variable values must be bytes instances, if they
-are present at all.  It is a violation of this specification for a CGI
+Note that CGI variable *values* must be bytes instances, if they are
+present at all.  It is a violation of this specification for a CGI
 variable's value to be of any type other than ``bytes``.  On Python 2,
-this means they will be of type ``str``.  On Python 2, this means they
+this means they will be of type ``str``.  On Python 3, this means they
 will be of type ``bytes``.
+
+They *keys* of all CGI and non-CGI variables in the environ, however,
+must be "native strings" (on both Python 2 and Python 3, they will be
+of type ``str``).
 
 In addition to the CGI-defined variables, the ``environ`` dictionary
 **may** also contain arbitrary operating-system "environment
@@ -613,11 +625,11 @@ Variable               Value
 =====================  ===============================================
 
 Finally, the ``environ`` dictionary may also contain server-defined
-variables.  These variables should have names which are strings,
-composed of only lower-case letters, numbers, dots, and underscores,
-and should be prefixed with a name that is unique to the defining
-server or gateway.  For example, ``mod_web3`` might define variables
-with names like ``mod_web3.some_variable``.
+variables.  These variables should have names which are native
+strings, composed of only lower-case letters, numbers, dots, and
+underscores, and should be prefixed with a name that is unique to the
+defining server or gateway.  For example, ``mod_web3`` might define
+variables with names like ``mod_web3.some_variable``.
 
 Input Stream
 ~~~~~~~~~~~~
