@@ -64,7 +64,9 @@ Differences from WSGI
   ``wsgi.input``.
 
 - All values present as environment dictionary *values* are explicitly
-  *bytes* instances instead of native strings.
+  *bytes* instances instead of native strings.  (Environment *keys*
+  however are native strings, always ``str`` regardless of
+  platform).
 
 - All values returned by an application must be bytes instances,
   including status code, header names and values, and the body.
