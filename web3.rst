@@ -51,7 +51,12 @@ versions earlier than 2.6 nor Python 3 versions earlier than 3.1.
    3.0 is not supported.
 
 .. XXX (chrism) I need to re-remember why Python 2.5 can't handle this
-   spec.  I wish I had written it down.
+   spec.  I wish I had written it down. Armin: Maybe for eliminating
+   need to call ``.close`` on application iterable which is a
+   generator.  WSGI middleware sometimes doesn't close the generator,
+   which leaks memory.  Armin says maybe not a good idea to eliminate
+   the need to call ``.close``; even though it's desirable, it might
+   be a problem.
 
 Explicability and documentability are the main technical drivers for
 the decisions made within the standard.
@@ -99,11 +104,13 @@ Differences from WSGI
   be placed in environ by server (each as the empty bytes instance if
   no associated value is received in the HTTP request).
 
-- ``web3.path_info`` and ``web3.script_name`` must be put into the
-  Web3 environment by the origin Web3 server.  When available, each is
-  the original, plain 7-bit ASCII, URL-encoded variant of its CGI
-  equivalent derived directly from the request URI (with %2F segment
-  markers and other meta-characters intact).
+- ``web3.path_info`` and ``web3.script_name`` should be put into the
+  Web3 environment, if possible, by the origin Web3 server.  When
+  available, each is the original, plain 7-bit ASCII, URL-encoded
+  variant of its CGI equivalent derived directly from the request URI
+  (with %2F segment markers and other meta-characters intact).  If the
+  server cannot provide one (or both) of these values, it must omit
+  the value(s) it cannot provide from the environment.
 
 - This requirement was removed: "middleware components **must not**
   block iteration waiting for multiple values from an application
@@ -119,7 +126,11 @@ Differences from WSGI
 
   .. XXX (chrism) I'm -0 on this; this behavior doesn't seem that
      harmful.  If we do keep it, we need to remove the bit in
-     "Specification Details" about ``len(body)``.
+     "Specification Details" about ``len(body)``.  Armin: Middlewares
+     are currently not resetting ``Content-Length`` if it's there.
+     Bug in 2.4 and 2.5 where reverse list iterator had ``__len__`` which
+     changed depending on how much was already consumed by the
+     iterator.  Armin's +0.
 
 - If the origin server advertises that it has the ``web3.async``
   capability, a Web3 application callable used by the server is
@@ -610,6 +621,8 @@ Variable               Value
                        within the environment as an already
                        URL-decoded string.  This is the original
                        URL-encoded value derived from the request URI.
+                       If the server cannot provide this value, it must 
+                       omit it from the environ.
 
 ``web3.path_info``     The non-URL-decoded ``PATH_INFO`` value.
                        Through a historical inequity, by virtue of the
@@ -617,6 +630,8 @@ Variable               Value
                        within the environment as an already
                        URL-decoded string.  This is the original
                        URL-encoded value derived from the request URI.
+                       If the server cannot provide this value, it must 
+                       omit it from the environ.
 
 ``web3.async``         This is ``True`` if the webserver supports
                        async invocation.  In that case an application
@@ -804,7 +819,11 @@ across Python versions, developers must do these things:
    For example, ``'abc' in somebytes'`` will raise a ``TypeError``
    under Python 3, but it will return ``True`` under Python 2.6 and
    2.7.  However, ``b'abc' in somebytes`` will work the same on both
-   versions.
+   versions.  In Python 3.2, this restriction may be partially
+   removed, as it's rumored that bytes types may obtain a ``__mod__``
+   implementation.
+
+#) ``__getitem__`` should not be used. XXX
 
 #) Dont try to use the ``format`` method or the ``__mod__`` method of
    instances of bytes (directly or indirectly).  In Python 2, the
@@ -913,15 +932,18 @@ returned must contain a character stream of ISO-8859-1 characters, or
 the character stream should use RFC 2047 MIME encoding.
 
 On Python platforms which do not have a native bytes-like type
-(e.g. Jython, IronPython, etc.), but instead which generally use
-textlike strings to represent bytes data, the definition of "bytes
-instance" can be changed: their "bytes instances" must be native
-strings that contain only code points representable in ISO-8859-1
-encoding (``\u0000`` through ``\u00FF``, inclusive).  It is a fatal
-error for an application on such a platform to supply strings
-containing any other Unicode character or code point.  Similarly,
-servers and gateways on those platforms **must not** supply strings to
-an application containing any other Unicode characters.
+(e.g. IronPython, etc.), but instead which generally use textlike
+strings to represent bytes data, the definition of "bytes instance"
+can be changed: their "bytes instances" must be native strings that
+contain only code points representable in ISO-8859-1 encoding
+(``\u0000`` through ``\u00FF``, inclusive).  It is a fatal error for
+an application on such a platform to supply strings containing any
+other Unicode character or code point.  Similarly, servers and
+gateways on those platforms **must not** supply strings to an
+application containing any other Unicode characters.
+
+.. XXX (armin: Jython now has a bytes type, we might remove this
+   section after seeing about IronPython)
 
 HTTP 1.1 Expect/Continue
 ------------------------
@@ -1197,7 +1219,8 @@ Python 3 does not have a stringlike type that can be used instead to
 represent bytes: it has a ``bytes`` type.  A bytes type operates quite
 a bit like a Python 2 ``str`` in Python 3.1+, but it lacks behavior
 equivalent to ``str.__mod__`` and its iteration protocol, and
-containment and equivalence comparisons are different.
+containment, sequence treatment, and equivalence comparisons are
+different.
 
 In either case, there is no type in Python 3 that behaves just like
 the Python 2 ``str`` type, and a way to create such a type doesn't
@@ -1480,6 +1503,11 @@ allow there to be request trailers. These are like request headers but
 come after the final null data chunk. These trailers are only
 available when the chunked data stream is finite length and when it
 has all been read in.  Neither WSGI nor Web3 currently supports them.
+
+XXX (armin) yield from application iterator should be specify write
+    plus flush by server.
+
+XXX (armin) websocket API.  
 
 References
 ==========
