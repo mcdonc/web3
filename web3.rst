@@ -654,14 +654,14 @@ Input Stream
 The input stream (``web3.input``) provided by the server must support
 the following methods:
 
-===================   ========
-Method                Notes
-===================   ========
-``read(size)``        1,4
-``readline([size])``  1,2,4
-``readlines([size])`` 1,3,4
-``__iter__()``        4
-===================   ========
+=====================  ========
+Method                 Notes
+=====================  ========
+``read(size)``         1,4
+``readline([size])``   1,2,4
+``readlines([size])``  1,3,4
+``__iter__()``         4
+=====================  ========
 
 The semantics of each method are as documented in the Python Library
 Reference, except for these notes as listed in the table above:
