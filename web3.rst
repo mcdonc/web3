@@ -1,14 +1,14 @@
-PEP: XXX
-Title: Python Web3 Interface
-Version: $Revision$
-Last-Modified: $Date$
-Author: chrism@plope.com (Chris McDonough),
-        armin.ronacher@active-4.com (Armin Ronacher)
-Discussions-To: Python Web-SIG <web-sig@python.org>
-Status: Draft
-Type: Informational
-Content-Type: text/x-rst
-Created: 19-Jul-2010
+:PEP: XXX
+:Title: Python Web3 Interface
+:Version: $Revision$
+:Last-Modified: $Date$
+:Author: chrism@plope.com (Chris McDonough),
+         armin.ronacher@active-4.com (Armin Ronacher)
+:Discussions-To: Python Web-SIG <web-sig@python.org>
+:Status: Draft
+:Type: Informational
+:Content-Type: text/x-rst
+:Created: 19-Jul-2010
 
 Abstract
 ========
