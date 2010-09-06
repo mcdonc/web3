@@ -50,13 +50,9 @@ versions earlier than 2.6 nor Python 3 versions earlier than 3.1.
    *true* minimum Python 3 version.  In particular, however, Python
    3.0 is not supported.
 
-.. XXX (chrism) I need to re-remember why Python 2.5 can't handle this
-   spec.  I wish I had written it down. Armin: Maybe for eliminating
-   need to call ``.close`` on application iterable which is a
-   generator.  WSGI middleware sometimes doesn't close the generator,
-   which leaks memory.  Armin says maybe not a good idea to eliminate
-   the need to call ``.close``; even though it's desirable, it might
-   be a problem.
+.. note:: Python 2.6 is the first Python version that supported an
+   alias for ``bytes`` and the ``b"foo"`` literal syntax.  This is why
+   it is the minimum version supported by Web3.
 
 Explicability and documentability are the main technical drivers for
 the decisions made within the standard.
@@ -123,14 +119,6 @@ Differences from WSGI
 - The server must not inject an additional ``Content-Length`` header
   by guessing the length from the response iterable.  This must be set
   by the application itself in all situations.
-
-  .. XXX (chrism) I'm -0 on this; this behavior doesn't seem that
-     harmful.  If we do keep it, we need to remove the bit in
-     "Specification Details" about ``len(body)``.  Armin: Middlewares
-     are currently not resetting ``Content-Length`` if it's there.
-     Bug in 2.4 and 2.5 where reverse list iterator had ``__len__`` which
-     changed depending on how much was already consumed by the
-     iterator.  Armin's +0.
 
 - If the origin server advertises that it has the ``web3.async``
   capability, a Web3 application callable used by the server is
@@ -250,7 +238,7 @@ server.
         d = {}
         for k, v in os.environ.items():
             # Python 3 compatibility
-            if not insinstance(v, bytes):
+            if not isinstance(v, bytes):
                 # We must explicitly encode the string to bytes under 
                 # Python 3.1+
                 v = v.encode(encoding, 'surrogateescape')
@@ -432,12 +420,6 @@ server or gateway **may** apply HTTP transfer encodings, or perform
 other transformations for the purpose of implementing HTTP features
 such as byte-range transmission.  See `Other HTTP Features`_, below,
 for more details.)
-
-If a call to ``len(body)`` succeeds, the server must be able to rely
-on the result being accurate.
-
-.. XXX (chrism) Must remove above if we say that we don't expect
-   servers to set missing Content-Length headers.
 
 If the ``body`` iterable returned by the application has a ``close()``
 method, the server or gateway **must** call that method upon
