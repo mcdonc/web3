@@ -64,10 +64,11 @@ class BaseHandler:
     traceback_limit = None  # Print entire traceback to self.get_stderr()
     error_status = b"500 Dude, this is whack!"
     error_headers = [(b'Content-Type', b'text/plain')]
-    error_body = "A server error occurred.  Please contact the administrator."
+    error_body = [b"A server error occurred. Contact the administrator."]
 
     # State variables (don't mess with these)
-    status = result = None
+    status = result = body = headers = None
+    
     headers_sent = False
     headers = None
     bytes_sent = 0
@@ -127,7 +128,8 @@ class BaseHandler:
         if not int(status[:3]):
             raise AssertionError(
                 "Status message must begin w/3-digit code: %r" % status)
-        if not status[3]==" ":
+        if not status[3:4]==b" ":
+            import pdb; pdb.set_trace()
             raise AssertionError(
                 "Status message must have a space after code: %r" % status)
 
@@ -168,7 +170,7 @@ class BaseHandler:
         if self.origin_server:
             if self.client_is_modern():
                 self._write(
-                    b'HTTP/' + self.http_version + ' ' + self.status + CRLF)
+                    b'HTTP/' + self.http_version + b' ' + self.status + CRLF)
                 if not self.has_header(b'Date'):
                     self._write(
                         b'Date: ' + format_date_time(time.time()) + CRLF
@@ -209,7 +211,7 @@ class BaseHandler:
         if not self.origin_server or self.client_is_modern():
             self.send_preamble()
             for k, v in self.headers:
-                self._write(k + ': ' + v + CRLF)
+                self._write(k + b': ' + v + CRLF)
             self._write(CRLF)
 
     def client_is_modern(self):

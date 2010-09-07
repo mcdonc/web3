@@ -3,47 +3,23 @@
 import posixpath
 
 __all__ = [
-    'FileWrapper', 'guess_scheme', 'application_uri', 'request_uri',
+    'guess_scheme', 'application_uri', 'request_uri',
     'shift_path_info', 'setup_testing_defaults', 'CRLF'
 ]
 
 CRLF = b'\r\n'
 
-class FileWrapper:
-    """Wrapper to convert file-like objects to iterables"""
-
-    def __init__(self, filelike, blksize=8192):
-        self.filelike = filelike
-        self.blksize = blksize
-        if hasattr(filelike,'close'):
-            self.close = filelike.close
-
-    def __getitem__(self,key):
-        data = self.filelike.read(self.blksize)
-        if data:
-            return data
-        raise IndexError
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        data = self.filelike.read(self.blksize)
-        if data:
-            return data
-        raise StopIteration
-
 def guess_scheme(environ):
     """Return a guess for whether 'wsgi.url_scheme' should be 'http' or 'https'
     """
-    if environ.get("HTTPS") in ('yes','on','1'):
-        return 'https'
+    if environ.get("HTTPS") in (b'yes', b'on', b'1'):
+        return b'https'
     else:
-        return 'http'
+        return b'http'
 
 def application_uri(environ):
     """Return the application's base URI (no PATH_INFO or QUERY_STRING)"""
-    url = environ['wsgi.url_scheme']+'://'
+    url = environ['wsgi.url_scheme']+b'://'
     from urllib import quote
 
     if environ.get('HTTP_HOST'):
@@ -51,27 +27,27 @@ def application_uri(environ):
     else:
         url += environ['SERVER_NAME']
 
-        if environ['wsgi.url_scheme'] == 'https':
-            if environ['SERVER_PORT'] != '443':
+        if environ['wsgi.url_scheme'] == b'https':
+            if environ['SERVER_PORT'] != b'443':
                 url += ':' + environ['SERVER_PORT']
         else:
-            if environ['SERVER_PORT'] != '80':
+            if environ['SERVER_PORT'] != b'80':
                 url += ':' + environ['SERVER_PORT']
 
-    url += quote(environ.get('SCRIPT_NAME') or '/')
+    url += quote(environ.get('SCRIPT_NAME') or b'/')
     return url
 
 def request_uri(environ, include_query=1):
     """Return the full request URI, optionally including the query string"""
     url = application_uri(environ)
     from urllib import quote
-    path_info = quote(environ.get('PATH_INFO',''))
+    path_info = quote(environ.get('PATH_INFO', b''))
     if not environ.get('SCRIPT_NAME'):
         url += path_info[1:]
     else:
         url += path_info
     if include_query and environ.get('QUERY_STRING'):
-        url += '?' + environ['QUERY_STRING']
+        url += b'?' + environ['QUERY_STRING']
     return url
 
 def shift_path_info(environ):
@@ -87,31 +63,31 @@ def shift_path_info(environ):
     behavior, to ensure that an application can tell the difference between
     '/x' and '/x/' when traversing to objects.
     """
-    path_info = environ.get('PATH_INFO','')
+    path_info = environ.get('PATH_INFO', b'')
     if not path_info:
         return None
 
-    path_parts = path_info.split('/')
-    path_parts[1:-1] = [p for p in path_parts[1:-1] if p and p<>'.']
+    path_parts = path_info.split(b'/')
+    path_parts[1:-1] = [p for p in path_parts[1:-1] if p and p!=b'.']
     name = path_parts[1]
     del path_parts[1]
 
-    script_name = environ.get('SCRIPT_NAME','')
-    script_name = posixpath.normpath(script_name+'/'+name)
-    if script_name.endswith('/'):
+    script_name = environ.get('SCRIPT_NAME', b'')
+    script_name = posixpath.normpath(script_name+b'/'+name)
+    if script_name.endswith(b'/'):
         script_name = script_name[:-1]
-    if not name and not script_name.endswith('/'):
-        script_name += '/'
+    if not name and not script_name.endswith(b'/'):
+        script_name += b'/'
 
     environ['SCRIPT_NAME'] = script_name
-    environ['PATH_INFO']   = '/'.join(path_parts)
+    environ['PATH_INFO']   = b'/'.join(path_parts)
 
     # Special case: '/.' on PATH_INFO doesn't get stripped,
     # because we don't strip the last element of PATH_INFO
     # if there's only one path part left.  Instead of fixing this
     # above, we fix it here so that PATH_INFO gets normalized to
     # an empty string in the environ.
-    if name=='.':
+    if name == b'.':
         name = None
     return name
 
@@ -128,44 +104,48 @@ def setup_testing_defaults(environ):
     be used by actual WSGI servers or applications, since the data is fake!
     """
 
-    environ.setdefault('SERVER_NAME','127.0.0.1')
-    environ.setdefault('SERVER_PROTOCOL','HTTP/1.0')
+    environ.setdefault('SERVER_NAME', b'127.0.0.1')
+    environ.setdefault('SERVER_PROTOCOL', b'HTTP/1.0')
 
-    environ.setdefault('HTTP_HOST',environ['SERVER_NAME'])
-    environ.setdefault('REQUEST_METHOD','GET')
+    environ.setdefault('HTTP_HOST', environ['SERVER_NAME'])
+    environ.setdefault('REQUEST_METHOD', b'GET')
 
     if 'SCRIPT_NAME' not in environ and 'PATH_INFO' not in environ:
-        environ.setdefault('SCRIPT_NAME','')
-        environ.setdefault('PATH_INFO','/')
+        environ.setdefault('SCRIPT_NAME', b'')
+        environ.setdefault('PATH_INFO', b'/')
 
-    environ.setdefault('wsgi.version', (1,0))
-    environ.setdefault('wsgi.run_once', 0)
-    environ.setdefault('wsgi.multithread', 0)
-    environ.setdefault('wsgi.multiprocess', 0)
+    environ.setdefault('web3.version', (1,0))
+    environ.setdefault('web3.run_once', 0)
+    environ.setdefault('web3.multithread', 0)
+    environ.setdefault('web3.multiprocess', 0)
 
     from StringIO import StringIO
-    environ.setdefault('wsgi.input', StringIO(""))
-    environ.setdefault('wsgi.errors', StringIO())
-    environ.setdefault('wsgi.url_scheme',guess_scheme(environ))
+    environ.setdefault('web3.input', StringIO(""))
+    environ.setdefault('web3.errors', StringIO())
+    environ.setdefault('web3.url_scheme',guess_scheme(environ))
 
-    if environ['wsgi.url_scheme']=='http':
-        environ.setdefault('SERVER_PORT', '80')
-    elif environ['wsgi.url_scheme']=='https':
-        environ.setdefault('SERVER_PORT', '443')
+    if environ['wsgi.url_scheme'] == b'http':
+        environ.setdefault('SERVER_PORT', b'80')
+    elif environ['wsgi.url_scheme']==b'https':
+        environ.setdefault('SERVER_PORT', b'443')
 
 _hoppish = {
     'connection':1, 'keep-alive':1, 'proxy-authenticate':1,
     'proxy-authorization':1, 'te':1, 'trailers':1, 'transfer-encoding':1,
     'upgrade':1
-}.has_key
+    }
 
 def is_hop_by_hop(header_name):
     """Return true if 'header_name' is an HTTP/1.1 "Hop-by-Hop" header"""
-    return _hoppish(header_name.lower())
+    return header_name.lower() in _hoppish
 
-
-
-
+def to_bytes(data):
+    try:
+        # Python 2
+        return bytes(data)
+    except TypeError:
+        # Python 3
+        return bytes(data, 'ascii')
 
 
 

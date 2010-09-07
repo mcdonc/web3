@@ -13,6 +13,7 @@ import urllib
 from BaseHTTPServer import BaseHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 from web3ref.handlers import SimpleHandler
+from web3ref.util import to_bytes
 
 __version__ = "0.0"
 __all__ = ['Web3Server', 'Web3RequestHandler', 'demo_app', 'make_server']
@@ -20,17 +21,6 @@ __all__ = ['Web3Server', 'Web3RequestHandler', 'demo_app', 'make_server']
 server_version = "Web3Server/" + __version__
 sys_version = "Python/" + sys.version.split()[0]
 software_version = server_version + ' ' + sys_version
-
-class ServerHandler(SimpleHandler):
-    server_software = software_version
-
-    def close(self):
-        try:
-            self.request_handler.log_request(
-                self.status.split(' ',1)[0], self.bytes_sent
-            )
-        finally:
-            SimpleHandler.close(self)
 
 class Web3Server(HTTPServer):
     """BaseHTTPServer that implements the Web3 protocol"""
@@ -45,12 +35,12 @@ class Web3Server(HTTPServer):
     def setup_environ(self):
         # Set up base environment
         env = self.base_environ = {}
-        env['SERVER_NAME'] = self.server_name
-        env['GATEWAY_INTERFACE'] = 'CGI/1.1'
-        env['SERVER_PORT'] = str(self.server_port)
-        env['REMOTE_HOST']=''
-        env['CONTENT_LENGTH']=''
-        env['SCRIPT_NAME'] = ''
+        env['SERVER_NAME'] = to_bytes(self.server_name)
+        env['GATEWAY_INTERFACE'] = b'CGI/1.1'
+        env['SERVER_PORT'] = to_bytes(str(self.server_port))
+        env['REMOTE_HOST'] = b''
+        env['CONTENT_LENGTH'] = b''
+        env['SCRIPT_NAME'] = b''
 
     def get_app(self):
         return self.application
@@ -64,39 +54,43 @@ class Web3RequestHandler(BaseHTTPRequestHandler):
 
     def get_environ(self):
         env = self.server.base_environ.copy()
-        env['SERVER_PROTOCOL'] = self.request_version
-        env['REQUEST_METHOD'] = self.command
+        env['SERVER_PROTOCOL'] = to_bytes(self.request_version)
+        env['REQUEST_METHOD'] = to_bytes(self.command)
         if '?' in self.path:
-            path,query = self.path.split('?',1)
+            path, query = self.path.split('?', 1)
         else:
-            path,query = self.path,''
+            path, query = self.path, ''
 
-        env['PATH_INFO'] = urllib.unquote(path)
-        env['QUERY_STRING'] = query
+        env['PATH_INFO'] = to_bytes(urllib.unquote(path))
+        env['QUERY_STRING'] = to_bytes(query)
 
         host = self.address_string()
         if host != self.client_address[0]:
-            env['REMOTE_HOST'] = host
-        env['REMOTE_ADDR'] = self.client_address[0]
+            env['REMOTE_HOST'] = to_bytes(host)
+        env['REMOTE_ADDR'] = to_bytes(self.client_address[0])
 
-        if self.headers.typeheader is None:
-            env['CONTENT_TYPE'] = self.headers.type
+        typeheader = self.headers.get('content-type')
+
+        if typeheader is None:
+            env['CONTENT_TYPE'] = b'text/plain'
         else:
-            env['CONTENT_TYPE'] = self.headers.typeheader
+            env['CONTENT_TYPE'] = to_bytes(typeheader)
 
-        length = self.headers.getheader('content-length')
+        length = self.headers.get('content-length')
         if length:
-            env['CONTENT_LENGTH'] = length
+            env['CONTENT_LENGTH'] = to_bytes(length)
 
-        for h in self.headers.headers:
-            k,v = h.split(':',1)
-            k=k.replace('-','_').upper(); v=v.strip()
+        headers = self.headers.items()
+
+        for k, v in headers:
+            k = k.replace('-','_').upper()
+            v = v.strip()
             if k in env:
                 continue                    # skip content length, type,etc.
             if 'HTTP_'+k in env:
-                env['HTTP_'+k] += ','+v     # comma-separate multiple headers
+                env['HTTP_'+k] += b','+ to_bytes(v) # comma-separate multiples
             else:
-                env['HTTP_'+k] = v
+                env['HTTP_'+k] = to_bytes(v)
         return env
 
     def get_stderr(self):
@@ -104,24 +98,15 @@ class Web3RequestHandler(BaseHTTPRequestHandler):
 
     def handle(self):
         """Handle a single HTTP request"""
-
         self.raw_requestline = self.rfile.readline()
         if not self.parse_request(): # An error code has been sent, just exit
             return
 
-        handler = ServerHandler(
+        handler = SimpleHandler(
             self.rfile, self.wfile, self.get_stderr(), self.get_environ()
         )
         handler.request_handler = self      # backpointer for logging
         handler.run(self.server.get_app())
-
-def to_bytes(data):
-    try:
-        # Python 2
-        return bytes(data)
-    except TypeError:
-        # Python 3
-        return bytes(data, 'ascii')
 
 def demo_app(environ):
     result = b'Hello world!'
@@ -129,7 +114,7 @@ def demo_app(environ):
         (b'Content-Length', to_bytes(len(result))),
         (b'Content-Type', b'text/plain'),
         ]
-    return ('200 OK', headers, [result])
+    return (b'200 OK', headers, [result])
 
 def make_server(
     host,
