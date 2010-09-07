@@ -1,8 +1,5 @@
 """Distutils setup file"""
 
-import ez_setup
-ez_setup.use_setuptools()
-
 from setuptools import setup
 
 setup(
@@ -16,5 +13,6 @@ setup(
     long_description = open('README.txt').read(),
     test_suite  = 'web3ref.tests',
     packages    = ['web3ref'],
+    use_2to3 = True,
     )
 
