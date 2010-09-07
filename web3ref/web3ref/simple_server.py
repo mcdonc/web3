@@ -62,6 +62,7 @@ class Web3RequestHandler(BaseHTTPRequestHandler):
             path, query = self.path, ''
 
         env['PATH_INFO'] = to_bytes(urllib.unquote(path))
+        env['RAW_PATH_INFO'] = to_bytes(path)
         env['QUERY_STRING'] = to_bytes(query)
 
         host = self.address_string()
