@@ -102,7 +102,8 @@ class BaseHandler:
         env['web3.multiprocess'] = self.web3_multiprocess
         if 'RAW_PATH_INFO' in env:
             env['web3.path_info']    = env['RAW_PATH_INFO']
-        env['web3.script_name']  = env['SCRIPT_NAME']
+        if 'RAW_SCRIPT_NAME' in env:
+            env['web3.script_name']  = env['SCRIPT_NAME']
         env['web3.async']        = self.web3_async
 
         if self.origin_server and self.server_software:
