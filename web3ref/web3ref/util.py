@@ -140,13 +140,7 @@ def is_hop_by_hop(header_name):
     return header_name.lower() in _hoppish
 
 def to_bytes(data):
-    try:
-        # Python 2
-        return bytes(data)
-    except TypeError:
-        # Python 3
-        return bytes(data, 'ascii')
-
+    return str(data).encode('ascii')
 
 
 
