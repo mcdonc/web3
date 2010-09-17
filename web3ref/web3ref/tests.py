@@ -1,18 +1,17 @@
 from unittest import TestCase
 
 from web3ref.util import setup_testing_defaults
-from web3ref.headers import Headers
 from web3ref.handlers import BaseHandler, BaseCGIHandler
 from web3ref import util
 from web3ref.validate import validator
-from web3ref.simple_server import WSGIServer, WSGIRequestHandler
+from web3ref.simple_server import Web3Server, Web3RequestHandler
 from web3ref.simple_server import make_server
 
 from StringIO import StringIO
 from SocketServer import BaseServer
 import re, sys
 
-class MockServer(WSGIServer):
+class MockServer(Web3Server):
     """Non-socket HTTP server"""
 
     def __init__(self, server_address, RequestHandlerClass):
@@ -25,7 +24,7 @@ class MockServer(WSGIServer):
         self.server_port = port
         self.setup_environ()
 
-class MockHandler(WSGIRequestHandler):
+class MockHandler(Web3RequestHandler):
     """Non-socket HTTP handler"""
     def setup(self):
         self.connection = self.request
@@ -94,7 +93,7 @@ class IntegrationTests(TestCase):
     def check_hello(self, out, has_length=True):
         self.assertEqual(out,
             "HTTP/1.0 200 OK\r\n"
-            "Server: WSGIServer/0.1 Python/"+sys.version.split()[0]+"\r\n"
+            "Server: Web3Server/0.1 Python/"+sys.version.split()[0]+"\r\n"
             "Content-Type: text/plain\r\n"
             "Date: Mon, 05 Jun 2006 18:49:54 GMT\r\n" +
             (has_length and  "Content-Length: 13\r\n" or "") +
@@ -209,22 +208,22 @@ class UtilityTests(TestCase):
             ('REQUEST_METHOD','GET'),
             ('SCRIPT_NAME',''),
             ('PATH_INFO','/'),
-            ('wsgi.version', (1,0)),
-            ('wsgi.run_once', 0),
-            ('wsgi.multithread', 0),
-            ('wsgi.multiprocess', 0),
-            ('wsgi.input', StringIO("")),
-            ('wsgi.errors', StringIO()),
-            ('wsgi.url_scheme','http'),
+            ('web3.version', (1,0)),
+            ('web3.run_once', 0),
+            ('web3.multithread', 0),
+            ('web3.multiprocess', 0),
+            ('web3.input', StringIO("")),
+            ('web3.errors', StringIO()),
+            ('web3.url_scheme','http'),
         ]:
             self.checkDefault(key,value)
 
     def testCrossDefaults(self):
         self.checkCrossDefault('HTTP_HOST',"foo.bar",SERVER_NAME="foo.bar")
-        self.checkCrossDefault('wsgi.url_scheme',"https",HTTPS="on")
-        self.checkCrossDefault('wsgi.url_scheme',"https",HTTPS="1")
-        self.checkCrossDefault('wsgi.url_scheme',"https",HTTPS="yes")
-        self.checkCrossDefault('wsgi.url_scheme',"http",HTTPS="foo")
+        self.checkCrossDefault('web3.url_scheme',"https",HTTPS="on")
+        self.checkCrossDefault('web3.url_scheme',"https",HTTPS="1")
+        self.checkCrossDefault('web3.url_scheme',"https",HTTPS="yes")
+        self.checkCrossDefault('web3.url_scheme',"http",HTTPS="foo")
         self.checkCrossDefault('SERVER_PORT',"80",HTTPS="foo")
         self.checkCrossDefault('SERVER_PORT',"443",HTTPS="on")
 
@@ -276,61 +275,6 @@ class UtilityTests(TestCase):
             for alt in hop, hop.title(), hop.upper(), hop.lower():
                 self.failIf(util.is_hop_by_hop(alt))
 
-class HeaderTests(TestCase):
-
-    def testMappingInterface(self):
-        test = [('x','y')]
-        self.assertEqual(len(Headers([])),0)
-        self.assertEqual(len(Headers(test[:])),1)
-        self.assertEqual(Headers(test[:]).keys(), ['x'])
-        self.assertEqual(Headers(test[:]).values(), ['y'])
-        self.assertEqual(Headers(test[:]).items(), test)
-        self.failIf(Headers(test).items() is test)  # must be copy!
-
-        h=Headers([])
-        del h['foo']   # should not raise an error
-
-        h['Foo'] = 'bar'
-        for m in h.has_key, h.__contains__, h.get, h.get_all, h.__getitem__:
-            self.failUnless(m('foo'))
-            self.failUnless(m('Foo'))
-            self.failUnless(m('FOO'))
-            self.failIf(m('bar'))
-
-        self.assertEqual(h['foo'],'bar')
-        h['foo'] = 'baz'
-        self.assertEqual(h['FOO'],'baz')
-        self.assertEqual(h.get_all('foo'),['baz'])
-
-        self.assertEqual(h.get("foo","whee"), "baz")
-        self.assertEqual(h.get("zoo","whee"), "whee")
-        self.assertEqual(h.setdefault("foo","whee"), "baz")
-        self.assertEqual(h.setdefault("zoo","whee"), "whee")
-        self.assertEqual(h["foo"],"baz")
-        self.assertEqual(h["zoo"],"whee")
-
-    def testRequireList(self):
-        self.assertRaises(TypeError, Headers, "foo")
-
-
-    def testExtras(self):
-        h = Headers([])
-        self.assertEqual(str(h),'\r\n')
-
-        h.add_header('foo','bar',baz="spam")
-        self.assertEqual(h['foo'], 'bar; baz="spam"')
-        self.assertEqual(str(h),'foo: bar; baz="spam"\r\n\r\n')
-
-        h.add_header('Foo','bar',cheese=None)
-        self.assertEqual(h.get_all('foo'),
-            ['bar; baz="spam"', 'bar; cheese'])
-
-        self.assertEqual(str(h),
-            'foo: bar; baz="spam"\r\n'
-            'Foo: bar; cheese\r\n'
-            '\r\n'
-        )
-
 class ErrorHandler(BaseCGIHandler):
     """Simple handler subclass for testing BaseHandler"""
 
@@ -356,7 +300,7 @@ class HandlerTests(TestCase):
         ]:
             if attr=='file_wrapper' and handler.wsgi_file_wrapper is None:
                 continue
-            self.assertEqual(getattr(handler,'wsgi_'+attr),env['wsgi.'+attr])
+            self.assertEqual(getattr(handler,'wsgi_'+attr),env['web3.'+attr])
 
     def checkOSEnviron(self,handler):
         empty = {}; setup_testing_defaults(empty)
@@ -378,14 +322,14 @@ class HandlerTests(TestCase):
     def testCGIEnviron(self):
         h = BaseCGIHandler(None,None,None,{})
         h.setup_environ()
-        for key in 'wsgi.url_scheme', 'wsgi.input', 'wsgi.errors':
+        for key in 'web3.url_scheme', 'web3.input', 'web3.errors':
             self.assert_(h.environ.has_key(key))
 
     def testScheme(self):
         h=TestHandler(HTTPS="on"); h.setup_environ()
-        self.assertEqual(h.environ['wsgi.url_scheme'],'https')
+        self.assertEqual(h.environ['web3.url_scheme'],'https')
         h=TestHandler(); h.setup_environ()
-        self.assertEqual(h.environ['wsgi.url_scheme'],'http')
+        self.assertEqual(h.environ['web3.url_scheme'],'http')
 
 
     def testAbstractMethods(self):
@@ -402,10 +346,10 @@ class HandlerTests(TestCase):
 
         def trivial_app1(e,s):
             s('200 OK',[])
-            return [e['wsgi.url_scheme']]
+            return [e['web3.url_scheme']]
 
         def trivial_app2(e,s):
-            s('200 OK',[])(e['wsgi.url_scheme'])
+            s('200 OK',[])(e['web3.url_scheme'])
             return []
 
         h = TestHandler()

@@ -10,7 +10,7 @@ __all__ = [
 CRLF = b'\r\n'
 
 def guess_scheme(environ):
-    """Return a guess for whether 'wsgi.url_scheme' should be 'http' or 'https'
+    """Return a guess for whether 'web3.url_scheme' should be 'http' or 'https'
     """
     if environ.get("HTTPS") in (b'yes', b'on', b'1'):
         return b'https'
@@ -19,7 +19,7 @@ def guess_scheme(environ):
 
 def application_uri(environ):
     """Return the application's base URI (no PATH_INFO or QUERY_STRING)"""
-    url = environ['wsgi.url_scheme']+b'://'
+    url = environ['web3.url_scheme']+b'://'
     from urllib import quote
 
     if environ.get('HTTP_HOST'):
@@ -27,7 +27,7 @@ def application_uri(environ):
     else:
         url += environ['SERVER_NAME']
 
-        if environ['wsgi.url_scheme'] == b'https':
+        if environ['web3.url_scheme'] == b'https':
             if environ['SERVER_PORT'] != b'443':
                 url += ':' + environ['SERVER_PORT']
         else:
@@ -94,14 +94,14 @@ def shift_path_info(environ):
 def setup_testing_defaults(environ):
     """Update 'environ' with trivial defaults for testing purposes
 
-    This adds various parameters required for WSGI, including HTTP_HOST,
+    This adds various parameters required for Web3, including HTTP_HOST,
     SERVER_NAME, SERVER_PORT, REQUEST_METHOD, SCRIPT_NAME, PATH_INFO,
-    and all of the wsgi.* variables.  It only supplies default values,
+    and all of the web3.* variables.  It only supplies default values,
     and does not replace any existing settings for these variables.
 
-    This routine is intended to make it easier for unit tests of WSGI
+    This routine is intended to make it easier for unit tests of Web3
     servers and applications to set up dummy environments.  It should *not*
-    be used by actual WSGI servers or applications, since the data is fake!
+    be used by actual Web3 servers or applications, since the data is fake!
     """
 
     environ.setdefault('SERVER_NAME', b'127.0.0.1')
@@ -124,9 +124,9 @@ def setup_testing_defaults(environ):
     environ.setdefault('web3.errors', StringIO())
     environ.setdefault('web3.url_scheme',guess_scheme(environ))
 
-    if environ['wsgi.url_scheme'] == b'http':
+    if environ['web3.url_scheme'] == b'http':
         environ.setdefault('SERVER_PORT', b'80')
-    elif environ['wsgi.url_scheme']==b'https':
+    elif environ['web3.url_scheme']==b'https':
         environ.setdefault('SERVER_PORT', b'443')
 
 _hoppish = {
@@ -141,30 +141,3 @@ def is_hop_by_hop(header_name):
 
 def to_bytes(data):
     return str(data).encode('ascii')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#
