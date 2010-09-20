@@ -288,12 +288,15 @@ server.
     def run_with_cgi(application):
 
         environ = get_environ()
-        environ['web3.input']        = sys.stdin
-        environ['web3.errors']       = sys.stderr
-        environ['web3.version']      = (1, 0)
-        environ['web3.multithread']  = False
-        environ['web3.multiprocess'] = True
-        environ['web3.run_once']     = True
+        environ['web3.input']         = sys.stdin
+        environ['web3.errors']        = sys.stderr
+        environ['web3.version']       = (1, 0)
+        environ['web3.multithread']   = False
+        environ['web3.multiprocess']  = True
+        environ['web3.run_once']      = True
+        environ['SCRIPT_NAME'] = url_quote(environ['SCRIPT_NAME'])
+        environ['PATH_INFO] = url_quote(environ['PATH_INFO'])
+        environ['web3.path_requoted'] = True
 
         if environ.get('HTTPS', b'off') in (b'on', b'1'):
             environ['web3.url_scheme'] = b'https'
