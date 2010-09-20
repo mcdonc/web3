@@ -164,6 +164,9 @@ Differences from WSGI
   be placed in environ by server (each as the empty bytes instance if
   no associated value is received in the HTTP request).
 
+- ``PATH_INFO`` and ``SCRIPT_NAME`` are now assumed to be
+  non-url-decoded (%2F and other hex-escaped characters intact).
+
 - ``SERVER_PORT`` must be a bytes instance (not an integer).
 
 - The server must not inject an additional ``Content-Length`` header
