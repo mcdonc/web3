@@ -78,7 +78,7 @@ Change History
 
 - First public release as PEP 444.
 
-2010-09-18
+2010-09-19
 ----------
 
 - Removed all references to ``web3.async`` feature.  The specification
@@ -116,7 +116,7 @@ Change History
 - Removed references to ``web3.path_info`` and ``web3.script_name``.
 
 - Added ``web3.path_requoted`` flag, indicating that ``PATH_INFO`` and
-  ``SCRIPT_NAME`` have been requoted from an unreliable source.
+  ``SCRIPT_NAME`` have been requoted (as from dequoted CGI values).
 
 - ``PATH_INFO`` and ``SCRIPT_NAME`` are now assumed to be
   non-url-decoded (%2F and other hex-escaped characters intact).
@@ -633,7 +633,8 @@ Variable               Value
                        were dequoted and subsequently requoted, such
                        as in the case that a URL-quoted ``PATH_INFO``
                        has been reconstructed from already-unquoted
-                       CGI values.
+                       CGI values.  This is mostly a flag useful for
+                       debugging purposes.
 
 =====================  ===============================================
 
