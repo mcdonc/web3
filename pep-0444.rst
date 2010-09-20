@@ -116,7 +116,7 @@ Change History
 - Removed references to ``web3.path_info`` and ``web3.script_name``.
 
 - Added ``web3.path_requoted`` flag, indicating that ``PATH_INFO`` and
-  ``SCRIPT_NAME`` have been reconstructed from an unreliable source.
+  ``SCRIPT_NAME`` have been requoted from an unreliable source.
 
 - ``PATH_INFO`` and ``SCRIPT_NAME`` are now assumed to be
   non-url-decoded (%2F and other hex-escaped characters intact).
@@ -379,7 +379,6 @@ header exists and adds a comment to all html responses::
         return new_application
 
     app = proxy_and_timing_support(app)
-
 
 Specification Details
 =====================
